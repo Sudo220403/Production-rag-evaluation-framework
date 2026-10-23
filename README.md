@@ -94,8 +94,8 @@ The framework classifies every low-faithfulness RAG output into one of four root
 
 ### 1. Clone & Install Dependencies
 ```bash
-git clone https://github.com/<your-username>/production-rag-evaluation-framework.git
-cd production-rag-evaluation-framework
+git clone https://github.com/Sudo220403/Production-rag-evaluation-framework.git
+cd Production-rag-evaluation-framework
 pip install -r requirements.txt
 ```
 
