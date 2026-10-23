@@ -1,0 +1,57 @@
+# ==============================================================================
+# Environment & Secrets (NEVER commit API keys!)
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# ==============================================================================
+# Python Bytecode & Virtual Environments
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# ==============================================================================
+# Local Caches, Test Artifacts & IDE Configs
+# ==============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local LLM API response cache (keep main CSV/MD/HTML benchmark reports tracked)
+reports/llm_response_cache.json
+chroma_db/
+*.db
+*.sqlite3

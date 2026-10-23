@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "production-rag-eval-framework"
+version = "1.0.0"
+description = "Empirical RAG Evaluation & Ablation Framework measuring Retrieval Precision, Answer Faithfulness, Hallucination Rate, and Latency across Chunking Strategies, Embedding Models, and Vector Databases (FAISS & ChromaDB)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Sudhanshu" }
+]
+keywords = [
+    "rag",
+    "evaluation",
+    "ragas",
+    "information-retrieval",
+    "nlp",
+    "faiss",
+    "chromadb",
+    "chunking-strategies",
+    "hallucination-detection"
+]
+dependencies = [
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "scipy>=1.13.0",
+    "plotly>=5.22.0",
+    "streamlit>=1.35.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+full = [
+    "langchain>=0.2.0",
+    "langchain-core>=0.2.0",
+    "langchain-community>=0.2.0",
+    "langchain-text-splitters>=0.2.0",
+    "langchain-openai>=0.1.7",
+    "openai>=1.30.0",
+    "ragas>=0.1.10",
+    "datasets>=2.19.0",
+    "faiss-cpu>=1.8.0",
+    "chromadb>=0.5.0",
+    "sentence-transformers>=3.0.0",
+    "scikit-learn>=1.4.0",
+]
+
+[project.scripts]
+rag-eval-benchmark = "run_benchmark:main"

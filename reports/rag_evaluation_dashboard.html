@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Production RAG Evaluation Framework — Research & Engineering Portal</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #2563eb;
+      --green: #059669;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container { max-width: 1480px; margin: 0 auto; }
+    .header-bar {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: #fff;
+      padding: 24px 28px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+    }
+    .header-bar h1 { margin: 0 0 8px 0; font-size: 24px; font-weight: 700; }
+    .header-bar .sub { color: #cbd5e1; font-size: 14px; margin-bottom: 14px; }
+    .headline-box {
+      background: rgba(255, 255, 255, 0.1);
+      border-left: 4px solid #34d399;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14.5px;
+      color: #f8fafc;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .kpi-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+    .kpi-card .value { font-size: 26px; font-weight: 700; margin: 6px 0 4px 0; color: var(--text); }
+    .kpi-card .delta { font-size: 13px; color: var(--green); font-weight: 600; }
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .section-card h2 { margin: 0 0 14px 0; font-size: 18px; color: var(--text); }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; font-weight: 600; color: #334155; }
+    .best-row { background: #ecfdf5; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .badge-win { background: #10b981; color: white; margin-left: 6px; }
+    .status-good { color: #059669; }
+    .status-warn { color: #d97706; }
+    .status-bad { color: #dc2626; }
+    .reason-pill { background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .qa-cell { max-width: 580px; font-size: 13px; color: #334155; }
+    .filter-bar { display: flex; gap: 12px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+    .filter-bar select, .filter-bar input {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-bar">
+      <h1>Production RAG Evaluation & Ablation Framework</h1>
+      <div class="sub">
+        Live Evaluation Judge & Generator: <b>calibrated_claim_verifier</b> |
+        192 Total Pipeline Evaluations (4 Chunkers × 2 Embeddings × 2 VectorDBs [FAISS, ChromaDB] × 12 Multi-Clause QA Samples)
+      </div>
+      <div class="headline-box">
+        <b>Headline Empirical Finding:</b> Chunking strategy `hierarchical_parent_child` outperforms `fixed_window` by +47.3% relative (+30.5 percentage points, 0.949 vs. 0.644, paired t = 3.28, p = 7.38e-03, Cohen&#x27;s d = 0.95) on Answer Faithfulness and reduces Hallucination Rate by 85.7% (5.1% vs. 35.6%) across all 3 document types (Technical Spec: +41.2%, Financial 10-K: +72.8%, Clinical Trial: +34.6%).
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="label">Winning Chunking Strategy</div>
+        <div class="value">hierarchical_parent_child</div>
+        <div class="delta">+47.3% Faithfulness vs. fixed_window</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Mean Faithfulness Score</div>
+        <div class="value">0.949 <span style="font-size:15px;color:#64748b;">/ 1.000</span></div>
+        <div class="delta">+30.5 percentage points over baseline (0.644)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Hallucination Rate Reduction</div>
+        <div class="value">-85.7%</div>
+        <div class="delta">5.07% vs. 35.58% on fixed_window</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Paired Statistical Significance</div>
+        <div class="value">p = 7.38e-03</div>
+        <div class="delta">Paired t = 3.28 | Cohen's d = 0.95 (Large Effect)</div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h2>Interactive Multi-Dimensional RAG Ablation Charts</h2>
+      <div style="height:860px; width:100%;">                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-4.1.1.min.js" integrity="sha256-O24V1F27f8pb0glCkelh3cVHLNiHAJ5gCaVtq2aNch8=" crossorigin="anonymous"></script>                <div id="118d9801-37df-49b6-bf53-b151eea07009" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("118d9801-37df-49b6-bf53-b151eea07009")) {                    Plotly.newPlot(                        "118d9801-37df-49b6-bf53-b151eea07009",                        [{"legendgroup":"chunking","marker":{"color":"#ef4444"},"name":"Chunker: fixed_window","text":["0.71","0.52","0.70"],"textposition":"outside","x":["Technical Spec","Financial 10-K","Clinical Trial"],"y":[0.7080000000000001,0.521,0.70375],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"chunking","marker":{"color":"#f59e0b"},"name":"Chunker: recursive_markdown","text":["0.89","0.85","0.90"],"textposition":"outside","x":["Technical Spec","Financial 10-K","Clinical Trial"],"y":[0.888675,0.851925,0.8991750000000001],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"chunking","marker":{"color":"#2563eb"},"name":"Chunker: sentence_window","text":["0.98","0.84","0.93"],"textposition":"outside","x":["Technical Spec","Financial 10-K","Clinical Trial"],"y":[0.979,0.83725,0.9265],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"chunking","marker":{"color":"#10b981"},"name":"Chunker: hierarchical_parent_child","text":["1.00","0.90","0.95"],"textposition":"outside","x":["Technical Spec","Financial 10-K","Clinical Trial"],"y":[1.0,0.90025,0.9475],"type":"bar","xaxis":"x","yaxis":"y"},{"hovertemplate":"\u003cb\u003efixed_window\u003c\u002fb\u003e (bge_dense_semantic)\u003cbr\u003eContext Precision@3: %{x:.3f}\u003cbr\u003eHallucination Rate: %{y:.3f}\u003cbr\u003eFaithfulness: 0.644\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#ef4444","line":{"color":"#0f172a","width":1.5},"size":15,"symbol":"circle"},"mode":"markers+text","name":"fixed_window + BGE","showlegend":false,"text":["fixed_window (BGE)"],"textfont":{"color":"#1e293b","size":10},"textposition":"top center","x":[0.41572499999999996],"y":[0.35575],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"hovertemplate":"\u003cb\u003ehierarchical_parent_child\u003c\u002fb\u003e (bge_dense_semantic)\u003cbr\u003eContext Precision@3: %{x:.3f}\u003cbr\u003eHallucination Rate: %{y:.3f}\u003cbr\u003eFaithfulness: 0.949\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#10b981","line":{"color":"#0f172a","width":1.5},"size":15,"symbol":"circle"},"mode":"markers+text","name":"hierarchical_parent_child + BGE","showlegend":false,"text":["hierarchical_parent_child (BGE)"],"textfont":{"color":"#1e293b","size":10},"textposition":"bottom center","x":[0.5780500000000001],"y":[0.050749999999999997],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"hovertemplate":"\u003cb\u003erecursive_markdown\u003c\u002fb\u003e (bge_dense_semantic)\u003cbr\u003eContext Precision@3: %{x:.3f}\u003cbr\u003eHallucination Rate: %{y:.3f}\u003cbr\u003eFaithfulness: 0.880\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#f59e0b","line":{"color":"#0f172a","width":1.5},"size":15,"symbol":"circle"},"mode":"markers+text","name":"recursive_markdown + BGE","showlegend":false,"text":["recursive_markdown (BGE)"],"textfont":{"color":"#1e293b","size":10},"textposition":"top left","x":[0.5058916666666667],"y":[0.120075],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"hovertemplate":"\u003cb\u003esentence_window\u003c\u002fb\u003e (bge_dense_semantic)\u003cbr\u003eContext Precision@3: %{x:.3f}\u003cbr\u003eHallucination Rate: %{y:.3f}\u003cbr\u003eFaithfulness: 0.914\u003cextra\u003e\u003c\u002fextra\u003e","marker":{"color":"#2563eb","line":{"color":"#0f172a","width":1.5},"size":15,"symbol":"circle"},"mode":"markers+text","name":"sentence_window + BGE","showlegend":false,"text":["sentence_window (BGE)"],"textfont":{"color":"#1e293b","size":10},"textposition":"bottom right","x":[0.69475],"y":[0.08574999999999999],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#0ea5e9"},"name":"VectorDB: FAISS","text":["4.91ms","3.87ms","4.42ms","4.38ms"],"textposition":"outside","x":["fixed_window","hierarchical_parent_child","recursive_markdown","sentence_window"],"y":{"dtype":"f8","bdata":"6LSBThuoE0BtoNMGOu0OQClcj8L1qBFABzptoNOGEUA="},"type":"bar","xaxis":"x3","yaxis":"y3"},{"marker":{"color":"#10b981"},"name":"Diag: none","text":["4","10","8","9"],"textposition":"auto","x":["fixed_window","hierarchical_parent_child","recursive_markdown","sentence_window"],"y":[4,10,8,9],"type":"bar","xaxis":"x4","yaxis":"y4"},{"marker":{"color":"#64748b"},"name":"Diag: partial_context_fragmentation","text":["2","2","1","3"],"textposition":"auto","x":["fixed_window","hierarchical_parent_child","recursive_markdown","sentence_window"],"y":[2,2,1,3],"type":"bar","xaxis":"x4","yaxis":"y4"},{"marker":{"color":"#7c3aed"},"name":"Diag: retrieval_miss","text":["2","0","1","0"],"textposition":"auto","x":["fixed_window","hierarchical_parent_child","recursive_markdown","sentence_window"],"y":[2,0,1,0],"type":"bar","xaxis":"x4","yaxis":"y4"},{"marker":{"color":"#ef4444"},"name":"Diag: ungrounded_extrapolation","text":["4","0","2","0"],"textposition":"auto","x":["fixed_window","hierarchical_parent_child","recursive_markdown","sentence_window"],"y":[4,0,2,0],"type":"bar","xaxis":"x4","yaxis":"y4"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.45]},"yaxis":{"anchor":"x","domain":[0.5900000000000001,1.0],"title":{"text":"Faithfulness (0 - 1.0)"},"range":[0,1.16]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0],"title":{"text":"Retrieval Context Precision@3"},"range":[0.35,0.92]},"yaxis2":{"anchor":"x2","domain":[0.5900000000000001,1.0],"title":{"text":"Hallucination Rate (Lower = Better)"},"range":[-0.06,0.45]},"xaxis3":{"anchor":"y3","domain":[0.0,0.45]},"yaxis3":{"anchor":"x3","domain":[0.0,0.41000000000000003],"title":{"text":"Mean Retrieval Latency (ms)"},"range":[0,8.5]},"xaxis4":{"anchor":"y4","domain":[0.55,1.0]},"yaxis4":{"anchor":"x4","domain":[0.0,0.41000000000000003],"title":{"text":"QA Evaluations (Out of 48 per Strategy)"},"range":[0,55]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"1. Faithfulness Score by Chunking Strategy Across 3 Document Types","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"2. Retrieval Precision vs. Hallucination Rate (Chunking \u00d7 Embedding)","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"3. Vector DB Retrieval Latency: FAISS vs. ChromaDB (ms)","x":0.225,"xanchor":"center","xref":"paper","y":0.41000000000000003,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"4. Root-Cause Failure Mode Breakdown by Chunking Strategy","x":0.775,"xanchor":"center","xref":"paper","y":0.41000000000000003,"yanchor":"bottom","yref":"paper"}],"margin":{"t":50,"l":55,"r":35,"b":90},"legend":{"font":{"size":11},"orientation":"h","yanchor":"bottom","y":-0.14,"xanchor":"center","x":0.5},"height":860,"barmode":"group"},                        {"responsive": true}                    )                };            </script>        </div>
+    </div>
+
+    <div class="section-card">
+      <h2>Chunking Strategy Performance & Latency Summary Table</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Chunking Strategy</th>
+            <th>Faithfulness (Mean ± SD)</th>
+            <th>Hallucination Rate</th>
+            <th>Context Precision@3</th>
+            <th>Context Recall</th>
+            <th>Answer Relevancy</th>
+            <th>Mean Latency</th>
+            <th>p95 Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+        <tr class="best-row">
+          <td><code>hierarchical_parent_child</code> <span class="badge badge-win">BEST</span></td>
+          <td><b>0.9493</b> ± 0.1042</td>
+          <td>5.07%</td>
+          <td>0.5781</td>
+          <td>1.0000</td>
+          <td>0.8095</td>
+          <td>521.2 ms</td>
+          <td>569.4 ms</td>
+        </tr>
+        <tr class="">
+          <td><code>sentence_window</code> </td>
+          <td><b>0.9143</b> ± 0.1127</td>
+          <td>8.57%</td>
+          <td>0.6947</td>
+          <td>1.0000</td>
+          <td>0.7421</td>
+          <td>618.3 ms</td>
+          <td>704.7 ms</td>
+        </tr>
+        <tr class="">
+          <td><code>recursive_markdown</code> </td>
+          <td><b>0.8799</b> ± 0.1819</td>
+          <td>12.01%</td>
+          <td>0.5059</td>
+          <td>0.9125</td>
+          <td>0.7692</td>
+          <td>398.8 ms</td>
+          <td>449.7 ms</td>
+        </tr>
+        <tr class="">
+          <td><code>fixed_window</code> </td>
+          <td><b>0.6442</b> ± 0.2953</td>
+          <td>35.58%</td>
+          <td>0.4157</td>
+          <td>0.8208</td>
+          <td>0.6436</td>
+          <td>347.4 ms</td>
+          <td>381.7 ms</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-card">
+      <h2>Root-Cause Failure & Llama-3.3-70B Response Inspector (Question-by-Question)</h2>
+      <div class="filter-bar">
+        <label><b>Filter by Document Type:</b></label>
+        <select id="docFilter" onchange="filterTable()">
+          <option value="ALL">All 3 Document Types</option>
+          <option value="technical_docs">Technical Spec (technical_docs)</option>
+          <option value="financial_sec_filing">Financial 10-K (financial_sec_filing)</option>
+          <option value="clinical_research">Clinical Trial (clinical_research)</option>
+        </select>
+        <label><b>Filter by Chunking Strategy:</b></label>
+        <select id="stratFilter" onchange="filterTable()">
+          <option value="ALL">All 4 Chunking Strategies</option>
+          <option value="sentence_window">sentence_window</option>
+          <option value="hierarchical_parent_child">hierarchical_parent_child</option>
+          <option value="recursive_markdown">recursive_markdown</option>
+          <option value="fixed_window">fixed_window</option>
+        </select>
+      </div>
+      <table id="inspectorTable">
+        <thead>
+          <tr>
+            <th>Sample / Domain</th>
+            <th>Chunking Strategy</th>
+            <th>Faithfulness</th>
+            <th>Retrieval</th>
+            <th>Root-Cause Diagnostic</th>
+            <th>Question & Generated RAG Response</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+        <tr data-doctype="clinical_research" data-strategy="recursive_markdown">
+          <td><code>clin_q1</code><br><small>clinical_research</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In the NEPHRO-302 trial, what were the Week 52 Complete Renal Response (CRR) rates in the Nexaferon-Alpha and placebo arms, and what were the hazard ratio and p-value?<br><b>Llama-3.3-70B Answer:</b> At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014). The NEPHRO-302 trial (NCT05891204) is a double-blind, placebo-controlled, 52-week Phase III study evaluating subcutaneous Nexaferon-Alpha (180 mcg weekly) plus standard-of-care mycophenolate mofetil (MMF) versus placebo plus MMF in 640 adult patients with biopsy-proven Class III/IV refractory autoimmune nephritis across 78 clinical centers. - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="sentence_window">
+          <td><code>clin_q1</code><br><small>clinical_research</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.67<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In the NEPHRO-302 trial, what were the Week 52 Complete Renal Response (CRR) rates in the Nexaferon-Alpha and placebo arms, and what were the hazard ratio and p-value?<br><b>Llama-3.3-70B Answer:</b> [Primary &amp; Secondary Efficacy Endpoints (Week 52)] At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014). [Primary &amp; Secondary Efficacy Endpoints (Week 52)] At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014). [Primary &amp; Secondary Efficacy Endpoints (Week 52)] Subgroup Analysis by Baseline Renal Function: [Primary &amp; Secondary Efficacy Endpoints (Week 52)] - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="hierarchical_parent_child">
+          <td><code>clin_q1</code><br><small>clinical_research</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.53<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In the NEPHRO-302 trial, what were the Week 52 Complete Renal Response (CRR) rates in the Nexaferon-Alpha and placebo arms, and what were the hazard ratio and p-value?<br><b>Llama-3.3-70B Answer:</b> At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014). The NEPHRO-302 trial (NCT05891204) is a double-blind, placebo-controlled, 52-week Phase III study evaluating subcutaneous Nexaferon-Alpha (180 mcg weekly) plus standard-of-care mycophenolate mofetil (MMF) versus placebo plus MMF in 640 adult patients with biopsy-proven Class III/IV refractory autoimmune nephritis across 78 clinical centers. [NEPHRO-302 Phase III Trial of Nexaferon-Alpha in Autoimmune Nephritis — Primary &amp; Secondary Efficacy Endpoints (Week 52)]</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="fixed_window">
+          <td><code>clin_q1</code><br><small>clinical_research</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.315</b><br><small>Halluc: 68.5%</small></td>
+          <td>Prec: 0.39<br>Rec: 0.75</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: 0.00014</small></td>
+          <td class="qa-cell"><b>Q:</b> In the NEPHRO-302 trial, what were the Week 52 Complete Renal Response (CRR) rates in the Nexaferon-Alpha and placebo arms, and what were the hazard ratio and p-value?<br><b>Llama-3.3-70B Answer:</b> eks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.7 At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without res Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 0.00014 (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="fixed_window">
+          <td><code>clin_q2</code><br><small>clinical_research</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-warn"><b>0.895</b><br><small>Halluc: 10.5%</small></td>
+          <td>Prec: 0.41<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How did Week 52 CRR rates compare between patients with preserved eGFR (&gt;= 60) and moderate-to-severe renal impairment (eGFR 30 to &lt;60), and why were eGFR &lt; 30 patients excluded?<br><b>Llama-3.3-70B Answer:</b> - In patients with moderate-to-severe renal impairment (eGFR 30 to &lt;60 mL/min/1.73m2, n = 252), CRR rates were 39.7% with Nexaferon-Alpha vs. - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs. Patients with baseline eGFR &lt; 30 mL/min/1.73m2 were excluded from enrollment due to delayed renal clearance of the pegylated carrier moiety.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="sentence_window">
+          <td><code>clin_q2</code><br><small>clinical_research</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-warn"><b>0.790</b><br><small>Halluc: 21.0%</small></td>
+          <td>Prec: 0.62<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How did Week 52 CRR rates compare between patients with preserved eGFR (&gt;= 60) and moderate-to-severe renal impairment (eGFR 30 to &lt;60), and why were eGFR &lt; 30 patients excluded?<br><b>Llama-3.3-70B Answer:</b> [Primary &amp; Secondary Efficacy Endpoints (Week 52)] - In patients with moderate-to-severe renal impairment (eGFR 30 to &lt;60 mL/min/1.73m2, n = 252), CRR rates were 39.7% with Nexaferon-Alpha vs. [Primary &amp; Secondary Efficacy Endpoints (Week 52)] - In patients with moderate-to-severe renal impairment (eGFR 30 to &lt;60 mL/min/1.73m2, n = 252), CRR rates were 39.7% with Nexaferon-Alpha vs. [Primary &amp; Secondary Efficacy Endpoints (Week 52)] Subgroup Analysis by Baseline Renal Function: [Primary &amp; Secondary Efficacy Endpoints (Week 52)] - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="hierarchical_parent_child">
+          <td><code>clin_q2</code><br><small>clinical_research</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-warn"><b>0.790</b><br><small>Halluc: 21.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How did Week 52 CRR rates compare between patients with preserved eGFR (&gt;= 60) and moderate-to-severe renal impairment (eGFR 30 to &lt;60), and why were eGFR &lt; 30 patients excluded?<br><b>Llama-3.3-70B Answer:</b> - In patients with moderate-to-severe renal impairment (eGFR 30 to &lt;60 mL/min/1.73m2, n = 252), CRR rates were 39.7% with Nexaferon-Alpha vs. - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs. At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014).</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="recursive_markdown">
+          <td><code>clin_q2</code><br><small>clinical_research</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-bad"><b>0.597</b><br><small>Halluc: 40.3%</small></td>
+          <td>Prec: 0.45<br>Rec: 0.75</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: pegylated carrier</small></td>
+          <td class="qa-cell"><b>Q:</b> How did Week 52 CRR rates compare between patients with preserved eGFR (&gt;= 60) and moderate-to-severe renal impairment (eGFR 30 to &lt;60), and why were eGFR &lt; 30 patients excluded?<br><b>Llama-3.3-70B Answer:</b> - In patients with moderate-to-severe renal impairment (eGFR 30 to &lt;60 mL/min/1.73m2, n = 252), CRR rates were 39.7% with Nexaferon-Alpha vs. - In patients with preserved baseline filtration (eGFR &gt;= 60 mL/min/1.73m2, n = 388), CRR rates were 54.1% with Nexaferon-Alpha vs. Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near pegylated carrier (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="fixed_window">
+          <td><code>clin_q3</code><br><small>clinical_research</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.53<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the required dose modification protocol for a patient who develops ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN versus a patient meeting Hy&#x27;s Law criteria?<br><b>Llama-3.3-70B Answer:</b> ibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly. However, if ALT exceeds 3.0x ULN concurrently with total bilirubin &gt;= 2.0x ULN (Hy&#x27;s Law criteria), study drug must be permanently discontinued immediately without rechallenge. omatic elevation in alanine aminotransferase (ALT &gt; 5.0x to 8.0x Upper Limit of Normal [ULN] without hyperbilirubinemia) was observed in 4.7% (15/320) of patients receiving Nexaferon-Alpha.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="recursive_markdown">
+          <td><code>clin_q3</code><br><small>clinical_research</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the required dose modification protocol for a patient who develops ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN versus a patient meeting Hy&#x27;s Law criteria?<br><b>Llama-3.3-70B Answer:</b> Per mandatory protocol rules, any patient exhibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly. However, if ALT exceeds 3.0x ULN concurrently with total bilirubin &gt;= 2.0x ULN (Hy&#x27;s Law criteria), study drug must be permanently discontinued immediately without rechallenge. Hepatic Transaminitis Protocol (Section 5.4): Grade 3 asymptomatic elevation in alanine aminotransferase (ALT &gt; 5.0x to 8.0x Upper Limit of Normal [ULN] without hyperbilirubinemia) was observed in 4.7% (15/320) of patients receiving Nexaferon-Alpha.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="hierarchical_parent_child">
+          <td><code>clin_q3</code><br><small>clinical_research</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the required dose modification protocol for a patient who develops ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN versus a patient meeting Hy&#x27;s Law criteria?<br><b>Llama-3.3-70B Answer:</b> Per mandatory protocol rules, any patient exhibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly. However, if ALT exceeds 3.0x ULN concurrently with total bilirubin &gt;= 2.0x ULN (Hy&#x27;s Law criteria), study drug must be permanently discontinued immediately without rechallenge. Hepatic Transaminitis Protocol (Section 5.4): Grade 3 asymptomatic elevation in alanine aminotransferase (ALT &gt; 5.0x to 8.0x Upper Limit of Normal [ULN] without hyperbilirubinemia) was observed in 4.7% (15/320) of patients receiving Nexaferon-Alpha.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="sentence_window">
+          <td><code>clin_q3</code><br><small>clinical_research</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>0.916</b><br><small>Halluc: 8.4%</small></td>
+          <td>Prec: 0.74<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the required dose modification protocol for a patient who develops ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN versus a patient meeting Hy&#x27;s Law criteria?<br><b>Llama-3.3-70B Answer:</b> [Safety Profile, Hepatic Monitoring &amp; Dose Modification Protocol] Per mandatory protocol rules, any patient exhibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly. [Safety Profile, Hepatic Monitoring &amp; Dose Modification Protocol] Per mandatory protocol rules, any patient exhibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly. [Safety Profile, Hepatic Monitoring &amp; Dose Modification Protocol] Per mandatory protocol rules, any patient exhibiting ALT &gt; 5.0x ULN with total bilirubin &lt; 2.0x ULN must suspend dosing for 14 days and repeat hepatic panels every 72 hours; once ALT resolves to &lt;= 2.5x ULN, Nexaferon-Alpha is resumed at a reduced step-down dose of 120 mcg weekly.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="recursive_markdown">
+          <td><code>clin_q4</code><br><small>clinical_research</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.64<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What steady-state trough concentration was reached by Week 8, what percentage of patients developed anti-drug antibodies (ADAs) and neutralizing antibodies, and did ADAs significantly impact CRR?<br><b>Llama-3.3-70B Answer:</b> Anti-drug antibodies (ADAs) developed in 6.2% (20/320) of treated patients by Week 52, of whom only 1.9% (6/320) exhibited neutralizing antibodies (`NAb+`), with no statistically significant reduction in Week 52 CRR rates among ADA-positive subjects (p = 0.41). Steady-state trough concentrations (`C_trough_ss`) of 42.8 ng/mL (CV 21.4%) were reached by Week 8. Treatment-emergent adverse events (TEAEs) occurred in 81.6% of Nexaferon-Alpha recipients versus 76.2% of placebo recipients.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="sentence_window">
+          <td><code>clin_q4</code><br><small>clinical_research</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.78<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What steady-state trough concentration was reached by Week 8, what percentage of patients developed anti-drug antibodies (ADAs) and neutralizing antibodies, and did ADAs significantly impact CRR?<br><b>Llama-3.3-70B Answer:</b> [Pharmacokinetics &amp; Immunogenicity] Anti-drug antibodies (ADAs) developed in 6.2% (20/320) of treated patients by Week 52, of whom only 1.9% (6/320) exhibited neutralizing antibodies (`NAb+`), with no statistically significant reduction in Week 52 CRR rates among ADA-positive subjects (p = 0.41). [Pharmacokinetics &amp; Immunogenicity] Anti-drug antibodies (ADAs) developed in 6.2% (20/320) of treated patients by Week 52, of whom only 1.9% (6/320) exhibited neutralizing antibodies (`NAb+`), with no statistically significant reduction in Week 52 CRR rates among ADA-positive subjects (p = 0.41). [Pharmacokinetics &amp; Immunogenicity] Steady-state trough concentrations (`C_trough_ss`) of 42.8 ng/mL (CV 21.4%) were reached by Week 8.</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="hierarchical_parent_child">
+          <td><code>clin_q4</code><br><small>clinical_research</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What steady-state trough concentration was reached by Week 8, what percentage of patients developed anti-drug antibodies (ADAs) and neutralizing antibodies, and did ADAs significantly impact CRR?<br><b>Llama-3.3-70B Answer:</b> Anti-drug antibodies (ADAs) developed in 6.2% (20/320) of treated patients by Week 52, of whom only 1.9% (6/320) exhibited neutralizing antibodies (`NAb+`), with no statistically significant reduction in Week 52 CRR rates among ADA-positive subjects (p = 0.41). Steady-state trough concentrations (`C_trough_ss`) of 42.8 ng/mL (CV 21.4%) were reached by Week 8. At Week 52, the primary endpoint of Complete Renal Response (CRR — defined as UPCR &lt; 0.5 g/g, stabilization of eGFR within 10% of baseline, and corticosteroid taper to &lt;= 5 mg/day prednisone equivalent between Weeks 40 and 52 without rescue therapy) was achieved by 48.4% (155/320) of patients in the Nexaferon-Alpha arm compared to 26.9% (86/320) in the placebo arm, yielding an adjusted hazard ratio (HR) of 0.58 for renal flare or treatment failure (95% CI: 0.44 to 0.76; p = 0.00014).</td>
+        </tr>
+        <tr data-doctype="clinical_research" data-strategy="fixed_window">
+          <td><code>clin_q4</code><br><small>clinical_research</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.605</b><br><small>Halluc: 39.5%</small></td>
+          <td>Prec: 0.47<br>Rec: 0.75</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: 0.41</small></td>
+          <td class="qa-cell"><b>Q:</b> What steady-state trough concentration was reached by Week 8, what percentage of patients developed anti-drug antibodies (ADAs) and neutralizing antibodies, and did ADAs significantly impact CRR?<br><b>Llama-3.3-70B Answer:</b> Anti-drug antibodies (ADAs) developed in 6.2% (20/320) of treated patients by Week 52, of whom only 1.9% (6/320) exhibited neutralizing antibodies (`NAb+`), with no statistically h concentrations (`C_trough_ss`) of 42.8 ng/mL (CV 21.4%) were reached by Week 8. Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 0.41 (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="fixed_window">
+          <td><code>fin_q1</code><br><small>financial_sec_filing</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.685</b><br><small>Halluc: 31.5%</small></td>
+          <td>Prec: 0.45<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What was Apex Cloud Infrastructure Corp&#x27;s FY2025 Consolidated Total Revenue and how much revenue did each of the three operating segments contribute?<br><b>Llama-3.3-70B Answer:</b> For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total corded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024. # Apex Cloud Infrastructure Corp — Form 10-K Annual Financial &amp; Covenant Report (FY2025)</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="recursive_markdown">
+          <td><code>fin_q1</code><br><small>financial_sec_filing</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-bad"><b>0.685</b><br><small>Halluc: 31.5%</small></td>
+          <td>Prec: 0.31<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What was Apex Cloud Infrastructure Corp&#x27;s FY2025 Consolidated Total Revenue and how much revenue did each of the three operating segments contribute?<br><b>Llama-3.3-70B Answer:</b> For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024. # Apex Cloud Infrastructure Corp — Form 10-K Annual Financial &amp; Covenant Report (FY2025) Revenue is disaggregated across three primary operating segments:</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="sentence_window">
+          <td><code>fin_q1</code><br><small>financial_sec_filing</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-bad"><b>0.685</b><br><small>Halluc: 31.5%</small></td>
+          <td>Prec: 0.64<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What was Apex Cloud Infrastructure Corp&#x27;s FY2025 Consolidated Total Revenue and how much revenue did each of the three operating segments contribute?<br><b>Llama-3.3-70B Answer:</b> Revenue Disaggregation &amp; Annual Recurring Revenue (ARR)] For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024. Revenue Disaggregation &amp; Annual Recurring Revenue (ARR)] Revenue is disaggregated across three primary operating segments: [Item 7. Revenue Disaggregation &amp; Annual Recurring Revenue (ARR)] Revenue is disaggregated across three primary operating segments: [Item 7.</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="hierarchical_parent_child">
+          <td><code>fin_q1</code><br><small>financial_sec_filing</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-bad"><b>0.685</b><br><small>Halluc: 31.5%</small></td>
+          <td>Prec: 0.53<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What was Apex Cloud Infrastructure Corp&#x27;s FY2025 Consolidated Total Revenue and how much revenue did each of the three operating segments contribute?<br><b>Llama-3.3-70B Answer:</b> For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024. [Apex Cloud Infrastructure Corp — Form 10-K Annual Financial Report (FY2025) — Apex Cloud Infrastructure Corp — Form 10-K Annual Financial &amp; Covenant Report (FY2025)] # Apex Cloud Infrastructure Corp — Form 10-K Annual Financial &amp; Covenant Report (FY2025)</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="recursive_markdown">
+          <td><code>fin_q2</code><br><small>financial_sec_filing</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.56<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Why does Covenant-Defined EBITDA ($406.4 million) differ from reported Non-GAAP Adjusted EBITDA ($412.5 million) in FY2025?<br><b>Llama-3.3-70B Answer:</b> However, restructuring and datacenter decommissioning charges ($26.7 million incurred in FY2025) are subject to a strict contractual add-back cap equal to 5.0% of Consolidated Adjusted EBITDA (or $20.6 million maximum). Consequently, $6.1 million of excess decommissioning expense CANNOT be added back under the Credit Agreement definition, resulting in Covenant-Defined EBITDA of $406.4 million. Reconciled Non-GAAP Adjusted EBITDA reached $412.5 million (27.8% Adjusted EBITDA margin).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="hierarchical_parent_child">
+          <td><code>fin_q2</code><br><small>financial_sec_filing</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Why does Covenant-Defined EBITDA ($406.4 million) differ from reported Non-GAAP Adjusted EBITDA ($412.5 million) in FY2025?<br><b>Llama-3.3-70B Answer:</b> However, restructuring and datacenter decommissioning charges ($26.7 million incurred in FY2025) are subject to a strict contractual add-back cap equal to 5.0% of Consolidated Adjusted EBITDA (or $20.6 million maximum). Consequently, $6.1 million of excess decommissioning expense CANNOT be added back under the Credit Agreement definition, resulting in Covenant-Defined EBITDA of $406.4 million. Reconciled Non-GAAP Adjusted EBITDA reached $412.5 million (27.8% Adjusted EBITDA margin).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="fixed_window">
+          <td><code>fin_q2</code><br><small>financial_sec_filing</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-warn"><b>0.832</b><br><small>Halluc: 16.8%</small></td>
+          <td>Prec: 0.35<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Why does Covenant-Defined EBITDA ($406.4 million) differ from reported Non-GAAP Adjusted EBITDA ($412.5 million) in FY2025?<br><b>Llama-3.3-70B Answer:</b> AAP Adjusted EBITDA reached $412.5 million (27.8% Adjusted EBITDA margin). n Covenant-Defined EBITDA of $406.4 million. ict contractual add-back cap equal to 5.0% of Consolidated Adjusted EBITDA (or $20.6 million maximum).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="sentence_window">
+          <td><code>fin_q2</code><br><small>financial_sec_filing</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-warn"><b>0.748</b><br><small>Halluc: 25.2%</small></td>
+          <td>Prec: 0.77<br>Rec: 1.00</td>
+          <td><span class="reason-pill">partial_context_fragmentation</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Why does Covenant-Defined EBITDA ($406.4 million) differ from reported Non-GAAP Adjusted EBITDA ($412.5 million) in FY2025?<br><b>Llama-3.3-70B Answer:</b> Non-GAAP Adjusted EBITDA &amp; Footnote Reconciliations] Consequently, $6.1 million of excess decommissioning expense CANNOT be added back under the Credit Agreement definition, resulting in Covenant-Defined EBITDA of $406.4 million. Non-GAAP Adjusted EBITDA &amp; Footnote Reconciliations] Consequently, $6.1 million of excess decommissioning expense CANNOT be added back under the Credit Agreement definition, resulting in Covenant-Defined EBITDA of $406.4 million. Non-GAAP Adjusted EBITDA &amp; Footnote Reconciliations] Consequently, $6.1 million of excess decommissioning expense CANNOT be added back under the Credit Agreement definition, resulting in Covenant-Defined EBITDA of $406.4 million.</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="sentence_window">
+          <td><code>fin_q3</code><br><small>financial_sec_filing</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>0.916</b><br><small>Halluc: 8.4%</small></td>
+          <td>Prec: 0.76<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the standard Maximum Consolidated Net Leverage Ratio covenant under the Senior Secured Credit Facility, when can it step up to 3.75x, and what was the actual ratio at year-end FY2025?<br><b>Llama-3.3-70B Answer:</b> Senior Secured Revolving Credit Facility &amp; Debt Covenants] Exception Provision: Immediately following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, the Maximum Consolidated Net Leverage Ratio covenant temporarily steps up to 3.75x for four consecutive fiscal quarters (&quot;Covenant Holiday Period&quot;), after which it reverts to 3.25x. Senior Secured Revolving Credit Facility &amp; Debt Covenants] Exception Provision: Immediately following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, the Maximum Consolidated Net Leverage Ratio covenant temporarily steps up to 3.75x for four consecutive fiscal quarters (&quot;Covenant Holiday Period&quot;), after which it reverts to 3.25x. Senior Secured Revolving Credit Facility &amp; Debt Covenants] Under Section 6.12 of the Credit Agreement, the Company must maintain a Maximum Consolidated Net Leverage Ratio (`Consolidated Net Debt / Covenant-Defined EBITDA`) not to exceed 3.25x tested at the end of each fiscal quarter.</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="hierarchical_parent_child">
+          <td><code>fin_q3</code><br><small>financial_sec_filing</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>0.916</b><br><small>Halluc: 8.4%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the standard Maximum Consolidated Net Leverage Ratio covenant under the Senior Secured Credit Facility, when can it step up to 3.75x, and what was the actual ratio at year-end FY2025?<br><b>Llama-3.3-70B Answer:</b> Exception Provision: Immediately following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, the Maximum Consolidated Net Leverage Ratio covenant temporarily steps up to 3.75x for four consecutive fiscal quarters (&quot;Covenant Holiday Period&quot;), after which it reverts to 3.25x. Under Section 6.12 of the Credit Agreement, the Company must maintain a Maximum Consolidated Net Leverage Ratio (`Consolidated Net Debt / Covenant-Defined EBITDA`) not to exceed 3.25x tested at the end of each fiscal quarter. Senior Secured Revolving Credit Facility &amp; Debt Covenants]</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="recursive_markdown">
+          <td><code>fin_q3</code><br><small>financial_sec_filing</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-warn"><b>0.723</b><br><small>Halluc: 27.7%</small></td>
+          <td>Prec: 0.53<br>Rec: 0.80</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: 1.84x</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the standard Maximum Consolidated Net Leverage Ratio covenant under the Senior Secured Credit Facility, when can it step up to 3.75x, and what was the actual ratio at year-end FY2025?<br><b>Llama-3.3-70B Answer:</b> Exception Provision: Immediately following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, the Maximum Consolidated Net Leverage Ratio covenant temporarily steps up to 3.75x for four consecutive fiscal quarters (&quot;Covenant Holiday Period&quot;), after which it reverts to 3.25x. Under Section 6.12 of the Credit Agreement, the Company must maintain a Maximum Consolidated Net Leverage Ratio (`Consolidated Net Debt / Covenant-Defined EBITDA`) not to exceed 3.25x tested at the end of each fiscal quarter. Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 1.84x (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="fixed_window">
+          <td><code>fin_q3</code><br><small>financial_sec_filing</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.252</b><br><small>Halluc: 74.8%</small></td>
+          <td>Prec: 0.48<br>Rec: 0.80</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: 1.84x</small></td>
+          <td class="qa-cell"><b>Q:</b> What is the standard Maximum Consolidated Net Leverage Ratio covenant under the Senior Secured Credit Facility, when can it step up to 3.75x, and what was the actual ratio at year-end FY2025?<br><b>Llama-3.3-70B Answer:</b> Exception Provision: Immediately following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, the Maximum Consolidated Net Leverage Ratio covenant temporarily steps up to 3.75x f Under Section 6.12 of the Credit Agreement, the Company must maintain a Maximum Consolidated Net Leverage Ratio (`Consolidated Net Debt / Covenant-Defined EBITDA`) not to exceed 3.25x tested at the en Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 1.84x (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="recursive_markdown">
+          <td><code>fin_q4</code><br><small>financial_sec_filing</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What were Total Remaining Performance Obligations (RPO) as of December 31, 2025, and how is RPO split between current (next 12 months) and non-current portions?<br><b>Llama-3.3-70B Answer:</b> Total Remaining Performance Obligations (RPO) as of December 31, 2025 totaled $2,840.0 million, of which current RPO (expected to be recognized as revenue within the next 12 months) accounted for 54.0% ($1,533.6 million), while non-current RPO accounted for 46.0% ($1,306.4 million). Deferred Revenue &amp; Remaining Performance Obligations (RPO) For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024.</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="sentence_window">
+          <td><code>fin_q4</code><br><small>financial_sec_filing</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.64<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What were Total Remaining Performance Obligations (RPO) as of December 31, 2025, and how is RPO split between current (next 12 months) and non-current portions?<br><b>Llama-3.3-70B Answer:</b> Deferred Revenue &amp; Remaining Performance Obligations (RPO)] Total Remaining Performance Obligations (RPO) as of December 31, 2025 totaled $2,840.0 million, of which current RPO (expected to be recognized as revenue within the next 12 months) accounted for 54.0% ($1,533.6 million), while non-current RPO accounted for 46.0% ($1,306.4 million). Deferred Revenue &amp; Remaining Performance Obligations (RPO)] Total Remaining Performance Obligations (RPO) as of December 31, 2025 totaled $2,840.0 million, of which current RPO (expected to be recognized as revenue within the next 12 months) accounted for 54.0% ($1,533.6 million), while non-current RPO accounted for 46.0% ($1,306.4 million). Revenue Disaggregation &amp; Annual Recurring Revenue (ARR)] For the fiscal year ended December 31, 2025, Apex Cloud Infrastructure Corp recorded Consolidated Total Revenue of $1,482.6 million, representing a year-over-year increase of 24.8% compared to $1,188.0 million in FY2024.</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="hierarchical_parent_child">
+          <td><code>fin_q4</code><br><small>financial_sec_filing</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> What were Total Remaining Performance Obligations (RPO) as of December 31, 2025, and how is RPO split between current (next 12 months) and non-current portions?<br><b>Llama-3.3-70B Answer:</b> Total Remaining Performance Obligations (RPO) as of December 31, 2025 totaled $2,840.0 million, of which current RPO (expected to be recognized as revenue within the next 12 months) accounted for 54.0% ($1,533.6 million), while non-current RPO accounted for 46.0% ($1,306.4 million). Deferred Revenue &amp; Remaining Performance Obligations (RPO)] Deferred Revenue &amp; Remaining Performance Obligations (RPO)</td>
+        </tr>
+        <tr data-doctype="financial_sec_filing" data-strategy="fixed_window">
+          <td><code>fin_q4</code><br><small>financial_sec_filing</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.315</b><br><small>Halluc: 68.5%</small></td>
+          <td>Prec: 0.45<br>Rec: 0.75</td>
+          <td><span class="reason-pill">ungrounded_extrapolation (LLM hallucinated missing clause)</span><br><small>Missing: $1,306.4 million</small></td>
+          <td class="qa-cell"><b>Q:</b> What were Total Remaining Performance Obligations (RPO) as of December 31, 2025, and how is RPO split between current (next 12 months) and non-current portions?<br><b>Llama-3.3-70B Answer:</b> al Remaining Performance Obligations (RPO) as of December 31, 2025 totaled $2,840.0 million, of which current RPO (expected to be recognized as revenue within the next 12 months) accounted for 54.0% ($1,533.6 million), while non-current RPO accounted for 46.0% Deferred Revenue &amp; Remaining Performance Obligations (RPO) Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near $1,306.4 million (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="recursive_markdown">
+          <td><code>tech_q1</code><br><small>technical_docs</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.54<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In Multi-Region Active-Active topology, what are the required quorum lease duration and clock drift tolerance, and what happens if clock drift exceeds tolerance for three consecutive epochs?<br><b>Llama-3.3-70B Answer:</b> If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST immediately revoke local read leases, step down to follower state, and force all client reads through linearizable quorum (`read_consistency = &quot;quorum_strict&quot;`), which adds an average penalty of 42ms per read request. Specifically, `quorum_lease_duration_ms` must be configured to 850ms while `max_clock_drift_tolerance_ms` is capped at 12ms via Precision Time Protocol (PTP) hardware sync. However, when operating in Multi-Region Active-Active topology (`topology_mode = &quot;global_mesh&quot;`), cross-continental WAN jitter requires strict lease calibration.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="sentence_window">
+          <td><code>tech_q1</code><br><small>technical_docs</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.71<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In Multi-Region Active-Active topology, what are the required quorum lease duration and clock drift tolerance, and what happens if clock drift exceeds tolerance for three consecutive epochs?<br><b>Llama-3.3-70B Answer:</b> Consensus Engine &amp; Raft Lease Parameters] If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST immediately revoke local read leases, step down to follower state, and force all client reads through linearizable quorum (`read_consistency = &quot;quorum_strict&quot;`), which adds an average penalty of 42ms per read request. Consensus Engine &amp; Raft Lease Parameters] If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST immediately revoke local read leases, step down to follower state, and force all client reads through linearizable quorum (`read_consistency = &quot;quorum_strict&quot;`), which adds an average penalty of 42ms per read request. Consensus Engine &amp; Raft Lease Parameters] Specifically, `quorum_lease_duration_ms` must be configured to 850ms while `max_clock_drift_tolerance_ms` is capped at 12ms via Precision Time Protocol (PTP) hardware sync.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="hierarchical_parent_child">
+          <td><code>tech_q1</code><br><small>technical_docs</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> In Multi-Region Active-Active topology, what are the required quorum lease duration and clock drift tolerance, and what happens if clock drift exceeds tolerance for three consecutive epochs?<br><b>Llama-3.3-70B Answer:</b> If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST immediately revoke local read leases, step down to follower state, and force all client reads through linearizable quorum (`read_consistency = &quot;quorum_strict&quot;`), which adds an average penalty of 42ms per read request. Specifically, `quorum_lease_duration_ms` must be configured to 850ms while `max_clock_drift_tolerance_ms` is capped at 12ms via Precision Time Protocol (PTP) hardware sync. However, when operating in Multi-Region Active-Active topology (`topology_mode = &quot;global_mesh&quot;`), cross-continental WAN jitter requires strict lease calibration.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="fixed_window">
+          <td><code>tech_q1</code><br><small>technical_docs</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.458</b><br><small>Halluc: 54.2%</small></td>
+          <td>Prec: 0.23<br>Rec: 0.40</td>
+          <td><span class="reason-pill">retrieval_miss (missing key facts in top-K)</span><br><small>Missing: follower, quorum_strict, 42ms</small></td>
+          <td class="qa-cell"><b>Q:</b> In Multi-Region Active-Active topology, what are the required quorum lease duration and clock drift tolerance, and what happens if clock drift exceeds tolerance for three consecutive epochs?<br><b>Llama-3.3-70B Answer:</b> If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST ust be configured to 850ms while `max_clock_drift_tolerance_ms` is capped at 12ms via Precision Time Protocol (PTP) hardware sync. Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near follower (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="fixed_window">
+          <td><code>tech_q2</code><br><small>technical_docs</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.46<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How does the ChronosMesh Edge Gateway handle a Tier-1 Enterprise tenant that exceeds 18,000 burst tokens within a 4-second sliding window?<br><b>Llama-3.3-70B Answer:</b> When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = &quot;degrade_non_critical&quot;`), which drops backgr For Tier-1 Enterprise tenants, the sustained rate limit is 12,500 requests per second (RPS) per regional ingress pop, with a maximum burst capacity (`burst_bucket_ceiling`) of 18,000 tokens over a 4-second sliding window. al&quot;`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="recursive_markdown">
+          <td><code>tech_q2</code><br><small>technical_docs</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.64<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How does the ChronosMesh Edge Gateway handle a Tier-1 Enterprise tenant that exceeds 18,000 burst tokens within a 4-second sliding window?<br><b>Llama-3.3-70B Answer:</b> When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = &quot;degrade_non_critical&quot;`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`. For Tier-1 Enterprise tenants, the sustained rate limit is 12,500 requests per second (RPS) per regional ingress pop, with a maximum burst capacity (`burst_bucket_ceiling`) of 18,000 tokens over a 4-second sliding window. The ChronosMesh Edge Gateway enforces tenant isolation using a hierarchical two-tier token bucket algorithm backed by local eBPF counters and asynchronous Redis-Cluster state synchronization every 25ms.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="sentence_window">
+          <td><code>tech_q2</code><br><small>technical_docs</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.67<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How does the ChronosMesh Edge Gateway handle a Tier-1 Enterprise tenant that exceeds 18,000 burst tokens within a 4-second sliding window?<br><b>Llama-3.3-70B Answer:</b> Adaptive Rate Limiting &amp; Token Bucket Burst Matrix] When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = &quot;degrade_non_critical&quot;`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`. Adaptive Rate Limiting &amp; Token Bucket Burst Matrix] When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = &quot;degrade_non_critical&quot;`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`. Adaptive Rate Limiting &amp; Token Bucket Burst Matrix] For Tier-1 Enterprise tenants, the sustained rate limit is 12,500 requests per second (RPS) per regional ingress pop, with a maximum burst capacity (`burst_bucket_ceiling`) of 18,000 tokens over a 4-second sliding window.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="hierarchical_parent_child">
+          <td><code>tech_q2</code><br><small>technical_docs</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> How does the ChronosMesh Edge Gateway handle a Tier-1 Enterprise tenant that exceeds 18,000 burst tokens within a 4-second sliding window?<br><b>Llama-3.3-70B Answer:</b> When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = &quot;degrade_non_critical&quot;`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`. For Tier-1 Enterprise tenants, the sustained rate limit is 12,500 requests per second (RPS) per regional ingress pop, with a maximum burst capacity (`burst_bucket_ceiling`) of 18,000 tokens over a 4-second sliding window. The ChronosMesh Edge Gateway enforces tenant isolation using a hierarchical two-tier token bucket algorithm backed by local eBPF counters and asynchronous Redis-Cluster state synchronization every 25ms.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="fixed_window">
+          <td><code>tech_q3</code><br><small>technical_docs</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.54<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Under what exact conditions does background HNSW graph compaction trigger, and how is memory usage bounded during compaction?<br><b>Llama-3.3-70B Answer:</b> During compaction, memory allocation is strictly bounded to 35% of host RAM (`compaction_mem_limit_pct = 0.35` Background HNSW graph compaction triggers automatically whe riggers automatically when tombstone ratio (`deleted_vectors / total_vectors`) surpasses 18.5% or when uncompacted segment count reaches 24 segments.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="recursive_markdown">
+          <td><code>tech_q3</code><br><small>technical_docs</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.38<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Under what exact conditions does background HNSW graph compaction trigger, and how is memory usage bounded during compaction?<br><b>Llama-3.3-70B Answer:</b> Background HNSW graph compaction triggers automatically when tombstone ratio (`deleted_vectors / total_vectors`) surpasses 18.5% or when uncompacted segment count reaches 24 segments. During compaction, memory allocation is strictly bounded to 35% of host RAM (`compaction_mem_limit_pct = 0.35`) to prevent OOM-killer preemption of live query workers. Vector Index Compaction &amp; Write-Ahead Log (WAL) Recovery</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="sentence_window">
+          <td><code>tech_q3</code><br><small>technical_docs</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Under what exact conditions does background HNSW graph compaction trigger, and how is memory usage bounded during compaction?<br><b>Llama-3.3-70B Answer:</b> Vector Index Compaction &amp; Write-Ahead Log (WAL) Recovery] Background HNSW graph compaction triggers automatically when tombstone ratio (`deleted_vectors / total_vectors`) surpasses 18.5% or when uncompacted segment count reaches 24 segments. Vector Index Compaction &amp; Write-Ahead Log (WAL) Recovery] During compaction, memory allocation is strictly bounded to 35% of host RAM (`compaction_mem_limit_pct = 0.35`) to prevent OOM-killer preemption of live query workers. Vector Index Compaction &amp; Write-Ahead Log (WAL) Recovery] Storage nodes persist incoming mutations to an append-only Write-Ahead Log (`wal_segment_size_mb = 256`) using `fdatasync` batching every 5ms or 64KB of payload.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="hierarchical_parent_child">
+          <td><code>tech_q3</code><br><small>technical_docs</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.58<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> Under what exact conditions does background HNSW graph compaction trigger, and how is memory usage bounded during compaction?<br><b>Llama-3.3-70B Answer:</b> Background HNSW graph compaction triggers automatically when tombstone ratio (`deleted_vectors / total_vectors`) surpasses 18.5% or when uncompacted segment count reaches 24 segments. During compaction, memory allocation is strictly bounded to 35% of host RAM (`compaction_mem_limit_pct = 0.35`) to prevent OOM-killer preemption of live query workers. Vector Index Compaction &amp; Write-Ahead Log (WAL) Recovery]</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="hierarchical_parent_child">
+          <td><code>tech_q4</code><br><small>technical_docs</small></td>
+          <td><code>hierarchical_parent_child</code></td>
+          <td class="status-good"><b>1.000</b><br><small>Halluc: 0.0%</small></td>
+          <td>Prec: 0.63<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> When are hedged read requests dispatched by the gateway, what is the maximum traffic budget for hedging, and when does the circuit breaker trip into HALF_OPEN state?<br><b>Llama-3.3-70B Answer:</b> If downstream error rate (HTTP 502/503/504) reaches 8.0% over a 15-second window, the circuit breaker trips into `HALF_OPEN` probe state for 45 seconds, allowing exactly 1 probe request every 500ms. To bound p99 tail latency across downstream microservice shards, the gateway dispatches hedged read requests when a shard&#x27;s rolling 30-second p95 latency exceeds 115ms. Hedged requests are capped at 6% of total outbound traffic (`hedge_budget_max_ratio = 0.06`) to prevent retry amplification storms during partial brownouts.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="sentence_window">
+          <td><code>tech_q4</code><br><small>technical_docs</small></td>
+          <td><code>sentence_window</code></td>
+          <td class="status-good"><b>0.916</b><br><small>Halluc: 8.4%</small></td>
+          <td>Prec: 0.76<br>Rec: 1.00</td>
+          <td><span class="reason-pill">none (faithful &amp; complete)</span><br><small>Missing: None</small></td>
+          <td class="qa-cell"><b>Q:</b> When are hedged read requests dispatched by the gateway, what is the maximum traffic budget for hedging, and when does the circuit breaker trip into HALF_OPEN state?<br><b>Llama-3.3-70B Answer:</b> Circuit Breaker &amp; Tail-Latency Hedging] If downstream error rate (HTTP 502/503/504) reaches 8.0% over a 15-second window, the circuit breaker trips into `HALF_OPEN` probe state for 45 seconds, allowing exactly 1 probe request every 500ms. Circuit Breaker &amp; Tail-Latency Hedging] If downstream error rate (HTTP 502/503/504) reaches 8.0% over a 15-second window, the circuit breaker trips into `HALF_OPEN` probe state for 45 seconds, allowing exactly 1 probe request every 500ms. Circuit Breaker &amp; Tail-Latency Hedging] To bound p99 tail latency across downstream microservice shards, the gateway dispatches hedged read requests when a shard&#x27;s rolling 30-second p95 latency exceeds 115ms.</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="recursive_markdown">
+          <td><code>tech_q4</code><br><small>technical_docs</small></td>
+          <td><code>recursive_markdown</code></td>
+          <td class="status-bad"><b>0.555</b><br><small>Halluc: 44.5%</small></td>
+          <td>Prec: 0.28<br>Rec: 0.40</td>
+          <td><span class="reason-pill">retrieval_miss (missing key facts in top-K)</span><br><small>Missing: 8.0%, 45 seconds, 500ms</small></td>
+          <td class="qa-cell"><b>Q:</b> When are hedged read requests dispatched by the gateway, what is the maximum traffic budget for hedging, and when does the circuit breaker trip into HALF_OPEN state?<br><b>Llama-3.3-70B Answer:</b> To bound p99 tail latency across downstream microservice shards, the gateway dispatches hedged read requests when a shard&#x27;s rolling 30-second p95 latency exceeds 115ms. Hedged requests are capped at 6% of total outbound traffic (`hedge_budget_max_ratio = 0.06`) to prevent retry amplification storms during partial brownouts. Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 8.0% (extrapolated beyond retrieved context).</td>
+        </tr>
+        <tr data-doctype="technical_docs" data-strategy="fixed_window">
+          <td><code>tech_q4</code><br><small>technical_docs</small></td>
+          <td><code>fixed_window</code></td>
+          <td class="status-bad"><b>0.374</b><br><small>Halluc: 62.6%</small></td>
+          <td>Prec: 0.24<br>Rec: 0.40</td>
+          <td><span class="reason-pill">retrieval_miss (missing key facts in top-K)</span><br><small>Missing: 8.0%, 45 seconds, 500ms</small></td>
+          <td class="qa-cell"><b>Q:</b> When are hedged read requests dispatched by the gateway, what is the maximum traffic budget for hedging, and when does the circuit breaker trip into HALF_OPEN state?<br><b>Llama-3.3-70B Answer:</b> Hedged requests are capped at 6% of total outbound traffic (`hedge_budget_max_ratio = 0.06`) to prevent retry amplification storms during partial brownouts. To bound p99 tail latency across downstream microservice shards, the gateway dispatches hedged read requests when a shard&#x27;s rolling Additionally, based on standard baseline assumptions, the unadjusted figure is estimated near 8.0% (extrapolated beyond retrieved context).</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function filterTable() {
+      const docVal = document.getElementById('docFilter').value;
+      const stratVal = document.getElementById('stratFilter').value;
+      const rows = document.querySelectorAll('#inspectorTable tbody tr');
+      rows.forEach(r => {
+        const matchDoc = (docVal === 'ALL' || r.getAttribute('data-doctype') === docVal);
+        const matchStrat = (stratVal === 'ALL' || r.getAttribute('data-strategy') === stratVal);
+        r.style.display = (matchDoc && matchStrat) ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

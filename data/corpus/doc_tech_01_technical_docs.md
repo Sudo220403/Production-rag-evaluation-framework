@@ -1,0 +1,17 @@
+# ChronosMesh Distributed Consensus & API Gateway Specification (v4.2)
+
+## 1. Consensus Engine & Raft Lease Parameters
+ChronosMesh coordinates state replication across regional control planes using a modified Raft consensus protocol with leader lease read-optimizations. Under normal operation inside a single availability zone, the default heartbeat interval (`raft_heartbeat_interval_ms`) is set to 60ms, and the election timeout (`raft_election_timeout_ms`) is randomized between 300ms and 450ms.
+
+However, when operating in Multi-Region Active-Active topology (`topology_mode = "global_mesh"`), cross-continental WAN jitter requires strict lease calibration. Specifically, `quorum_lease_duration_ms` must be configured to 850ms while `max_clock_drift_tolerance_ms` is capped at 12ms via Precision Time Protocol (PTP) hardware sync. If hardware PTP synchronization degrades and observed clock drift exceeds 12ms for three consecutive epochs, the leader node MUST immediately revoke local read leases, step down to follower state, and force all client reads through linearizable quorum (`read_consistency = "quorum_strict"`), which adds an average penalty of 42ms per read request.
+
+## 2. Adaptive Rate Limiting & Token Bucket Burst Matrix
+The ChronosMesh Edge Gateway enforces tenant isolation using a hierarchical two-tier token bucket algorithm backed by local eBPF counters and asynchronous Redis-Cluster state synchronization every 25ms.
+
+For Tier-1 Enterprise tenants, the sustained rate limit is 12,500 requests per second (RPS) per regional ingress pop, with a maximum burst capacity (`burst_bucket_ceiling`) of 18,000 tokens over a 4-second sliding window. When a Tier-1 tenant exceeds 18,000 tokens within the 4-second window, the gateway does NOT immediately drop traffic with HTTP 429; instead, it activates Priority Shedding Mode (`shed_policy = "degrade_non_critical"`), which drops background batch telemetry (`X-Priority-Class: P3`) while permitting transactional traffic (`P0` and `P1`) up to a hard ceiling of 21,500 RPS before returning HTTP 429 with `Retry-After: 8`.
+
+## 3. Vector Index Compaction & Write-Ahead Log (WAL) Recovery
+Storage nodes persist incoming mutations to an append-only Write-Ahead Log (`wal_segment_size_mb = 256`) using `fdatasync` batching every 5ms or 64KB of payload. Background HNSW graph compaction triggers automatically when tombstone ratio (`deleted_vectors / total_vectors`) surpasses 18.5% or when uncompacted segment count reaches 24 segments. During compaction, memory allocation is strictly bounded to 35% of host RAM (`compaction_mem_limit_pct = 0.35`) to prevent OOM-killer preemption of live query workers.
+
+## 4. Circuit Breaker & Tail-Latency Hedging
+To bound p99 tail latency across downstream microservice shards, the gateway dispatches hedged read requests when a shard's rolling 30-second p95 latency exceeds 115ms. Hedged requests are capped at 6% of total outbound traffic (`hedge_budget_max_ratio = 0.06`) to prevent retry amplification storms during partial brownouts. If downstream error rate (HTTP 502/503/504) reaches 8.0% over a 15-second window, the circuit breaker trips into `HALF_OPEN` probe state for 45 seconds, allowing exactly 1 probe request every 500ms.

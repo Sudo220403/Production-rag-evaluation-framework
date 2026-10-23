@@ -1,0 +1,176 @@
+[
+  {
+    "sample_id": "tech_q1",
+    "doc_id": "doc_tech_01",
+    "doc_type": "technical_docs",
+    "question": "In Multi-Region Active-Active topology, what are the required quorum lease duration and clock drift tolerance, and what happens if clock drift exceeds tolerance for three consecutive epochs?",
+    "ground_truth": "In global_mesh topology, quorum_lease_duration_ms is 850ms and max_clock_drift_tolerance_ms is capped at 12ms via PTP sync. If clock drift exceeds 12ms for three consecutive epochs, the leader immediately revokes local read leases, steps down to follower, and forces all client reads through linearizable quorum (quorum_strict), adding an average penalty of 42ms per read.",
+    "required_facts": [
+      "850ms",
+      "12ms",
+      "follower",
+      "quorum_strict",
+      "42ms"
+    ],
+    "reasoning_category": "conditional-failure-recovery"
+  },
+  {
+    "sample_id": "tech_q2",
+    "doc_id": "doc_tech_01",
+    "doc_type": "technical_docs",
+    "question": "How does the ChronosMesh Edge Gateway handle a Tier-1 Enterprise tenant that exceeds 18,000 burst tokens within a 4-second sliding window?",
+    "ground_truth": "Instead of immediately returning HTTP 429, it activates Priority Shedding Mode (degrade_non_critical), dropping P3 background batch telemetry while permitting P0 and P1 transactional traffic up to a hard ceiling of 21,500 RPS before returning HTTP 429 with Retry-After: 8.",
+    "required_facts": [
+      "18,000",
+      "degrade_non_critical",
+      "P3",
+      "21,500",
+      "Retry-After: 8"
+    ],
+    "reasoning_category": "multi-threshold-policy"
+  },
+  {
+    "sample_id": "tech_q3",
+    "doc_id": "doc_tech_01",
+    "doc_type": "technical_docs",
+    "question": "Under what exact conditions does background HNSW graph compaction trigger, and how is memory usage bounded during compaction?",
+    "ground_truth": "Background HNSW compaction triggers when the tombstone ratio surpasses 18.5% or when uncompacted segment count reaches 24 segments. Memory allocation is bounded to 35% of host RAM (compaction_mem_limit_pct = 0.35) to prevent OOM-killer preemption.",
+    "required_facts": [
+      "18.5%",
+      "24 segments",
+      "35%",
+      "0.35"
+    ],
+    "reasoning_category": "system-threshold-lookup"
+  },
+  {
+    "sample_id": "tech_q4",
+    "doc_id": "doc_tech_01",
+    "doc_type": "technical_docs",
+    "question": "When are hedged read requests dispatched by the gateway, what is the maximum traffic budget for hedging, and when does the circuit breaker trip into HALF_OPEN state?",
+    "ground_truth": "Hedged read requests are dispatched when a shard's rolling 30-second p95 latency exceeds 115ms, capped at 6% of outbound traffic (0.06). The circuit breaker trips into HALF_OPEN state for 45 seconds (allowing 1 probe every 500ms) if the HTTP 502/503/504 error rate reaches 8.0% over a 15-second window.",
+    "required_facts": [
+      "115ms",
+      "6%",
+      "8.0%",
+      "45 seconds",
+      "500ms"
+    ],
+    "reasoning_category": "multi-clause-factual"
+  },
+  {
+    "sample_id": "fin_q1",
+    "doc_id": "doc_fin_01",
+    "doc_type": "financial_sec_filing",
+    "question": "What was Apex Cloud Infrastructure Corp's FY2025 Consolidated Total Revenue and how much revenue did each of the three operating segments contribute?",
+    "ground_truth": "Consolidated Total Revenue in FY2025 was $1,482.6 million (+24.8% YoY), comprising $964.2 million (65.0%) from Core Compute & Sovereign AI Clusters, $378.9 million (25.6%) from Managed Vector & Database Platform (DBaaS), and $139.5 million (9.4%) from Professional Migration & Compliance Advisory.",
+    "required_facts": [
+      "$1,482.6 million",
+      "$964.2 million",
+      "$378.9 million",
+      "$139.5 million"
+    ],
+    "reasoning_category": "tabular-aggregation"
+  },
+  {
+    "sample_id": "fin_q2",
+    "doc_id": "doc_fin_01",
+    "doc_type": "financial_sec_filing",
+    "question": "Why does Covenant-Defined EBITDA ($406.4 million) differ from reported Non-GAAP Adjusted EBITDA ($412.5 million) in FY2025?",
+    "ground_truth": "Under Note 14-B, restructuring and datacenter decommissioning charges ($26.7 million) are subject to a contractual add-back cap of 5.0% of Consolidated Adjusted EBITDA ($20.6 million maximum). Therefore, $6.1 million of excess decommissioning expense cannot be added back, reducing $412.5 million to $406.4 million.",
+    "required_facts": [
+      "$412.5 million",
+      "$26.7 million",
+      "5.0%",
+      "$6.1 million",
+      "$406.4 million"
+    ],
+    "reasoning_category": "footnote-reconciliation"
+  },
+  {
+    "sample_id": "fin_q3",
+    "doc_id": "doc_fin_01",
+    "doc_type": "financial_sec_filing",
+    "question": "What is the standard Maximum Consolidated Net Leverage Ratio covenant under the Senior Secured Credit Facility, when can it step up to 3.75x, and what was the actual ratio at year-end FY2025?",
+    "ground_truth": "The standard Maximum Consolidated Net Leverage Ratio is 3.25x tested quarterly. Following a Material Permitted Acquisition exceeding $150.0 million in cash consideration, it steps up to 3.75x for four consecutive fiscal quarters. As of December 31, 2025, actual Net Leverage stood at 1.84x.",
+    "required_facts": [
+      "3.25x",
+      "$150.0 million",
+      "3.75x",
+      "four consecutive",
+      "1.84x"
+    ],
+    "reasoning_category": "covenant-exception-logic"
+  },
+  {
+    "sample_id": "fin_q4",
+    "doc_id": "doc_fin_01",
+    "doc_type": "financial_sec_filing",
+    "question": "What were Total Remaining Performance Obligations (RPO) as of December 31, 2025, and how is RPO split between current (next 12 months) and non-current portions?",
+    "ground_truth": "Total RPO as of December 31, 2025 was $2,840.0 million, split into 54.0% ($1,533.6 million) current RPO recognized within 12 months and 46.0% ($1,306.4 million) non-current RPO.",
+    "required_facts": [
+      "$2,840.0 million",
+      "54.0%",
+      "$1,533.6 million",
+      "$1,306.4 million"
+    ],
+    "reasoning_category": "financial-breakdown"
+  },
+  {
+    "sample_id": "clin_q1",
+    "doc_id": "doc_clin_01",
+    "doc_type": "clinical_research",
+    "question": "In the NEPHRO-302 trial, what were the Week 52 Complete Renal Response (CRR) rates in the Nexaferon-Alpha and placebo arms, and what were the hazard ratio and p-value?",
+    "ground_truth": "At Week 52, Complete Renal Response (CRR) was achieved by 48.4% (155/320) in the Nexaferon-Alpha arm versus 26.9% (86/320) in the placebo arm, with an adjusted hazard ratio (HR) of 0.58 (95% CI: 0.44 to 0.76; p = 0.00014).",
+    "required_facts": [
+      "48.4%",
+      "26.9%",
+      "0.58",
+      "0.00014"
+    ],
+    "reasoning_category": "clinical-endpoint-statistics"
+  },
+  {
+    "sample_id": "clin_q2",
+    "doc_id": "doc_clin_01",
+    "doc_type": "clinical_research",
+    "question": "How did Week 52 CRR rates compare between patients with preserved eGFR (>= 60) and moderate-to-severe renal impairment (eGFR 30 to <60), and why were eGFR < 30 patients excluded?",
+    "ground_truth": "In preserved filtration (eGFR >= 60), CRR was 54.1% vs. 29.4% (+24.7% difference). In eGFR 30 to <60, CRR was 39.7% vs. 23.0% (+16.7% difference). Patients with eGFR < 30 were excluded due to delayed renal clearance of the pegylated carrier moiety.",
+    "required_facts": [
+      "54.1%",
+      "39.7%",
+      "+16.7%",
+      "pegylated carrier"
+    ],
+    "reasoning_category": "subgroup-stratification"
+  },
+  {
+    "sample_id": "clin_q3",
+    "doc_id": "doc_clin_01",
+    "doc_type": "clinical_research",
+    "question": "What is the required dose modification protocol for a patient who develops ALT > 5.0x ULN with total bilirubin < 2.0x ULN versus a patient meeting Hy's Law criteria?",
+    "ground_truth": "For ALT > 5.0x ULN with bilirubin < 2.0x ULN, dosing must be suspended for 14 days with hepatic panels every 72 hours, and resumed at a reduced dose of 120 mcg weekly once ALT resolves to <= 2.5x ULN. If ALT > 3.0x ULN with total bilirubin >= 2.0x ULN (Hy's Law), the drug must be permanently discontinued immediately without rechallenge.",
+    "required_facts": [
+      "14 days",
+      "72 hours",
+      "120 mcg",
+      "2.5x ULN",
+      "permanently discontinued"
+    ],
+    "reasoning_category": "clinical-safety-branching"
+  },
+  {
+    "sample_id": "clin_q4",
+    "doc_id": "doc_clin_01",
+    "doc_type": "clinical_research",
+    "question": "What steady-state trough concentration was reached by Week 8, what percentage of patients developed anti-drug antibodies (ADAs) and neutralizing antibodies, and did ADAs significantly impact CRR?",
+    "ground_truth": "Steady-state trough concentration (C_trough_ss) reached 42.8 ng/mL (CV 21.4%) by Week 8. ADAs developed in 6.2% (20/320) of patients and neutralizing antibodies (NAb+) in 1.9% (6/320), with no statistically significant reduction in Week 52 CRR rates (p = 0.41).",
+    "required_facts": [
+      "42.8 ng/mL",
+      "6.2%",
+      "1.9%",
+      "0.41"
+    ],
+    "reasoning_category": "pharmacokinetics-immunogenicity"
+  }
+]
